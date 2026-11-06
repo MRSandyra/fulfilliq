@@ -1,0 +1,1 @@
+{"schema_version":1,"event_type":"order_placed","order_id":"fixture-invalid-negative-freight","event_ts":"2018-09-01T09:00:00","promised_delivery_date":"2018-09-10","customer_state":"SP","seller_state":"RJ","items_count":1,"seller_count":1,"order_value_brl":10.0,"freight_brl":-1.0,"product_category_primary":"housewares"}

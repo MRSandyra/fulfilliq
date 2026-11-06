@@ -1,0 +1,3 @@
+# Cost checks
+
+The owner reported an eligible Free Plan with USD 100 credit before deployment. A before/after billing-console balance was not independently captured in this session, so no zero-cost claim is made. The owner then approved the staged and full Olist replay. The full run created 1,951 normal raw objects and matching curated objects, plus two deliberate retry probes. Its three reconciliation queries scanned 116,627,908 bytes in total; each stayed under the 100 MiB per-query workgroup cutoff. The actual billing-console balance remains unrecorded, so this evidence does not assert a final credit deduction or a zero-cost outcome.

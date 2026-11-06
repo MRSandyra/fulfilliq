@@ -1,0 +1,3 @@
+import type { Group, Manifest, Overview, Quality } from "./types";
+const load = async <T,>(file:string):Promise<T> => { const response=await fetch(`/data/${file}`, { cache:"no-store" }); if (!response.ok) throw new Error(`Could not load ${file}. Generate dashboard exports and refresh.`); return response.json() as Promise<T>; };
+export const loadDashboard = async () => Promise.all([load<Manifest>("manifest.json"), load<Overview>("overview.json"), load<Group[]>("sla_daily.json"), load<Group[]>("sla_regions.json"), load<Group[]>("sla_categories.json"), load<Quality>("quality.json"), load<Record<string,unknown>>("risk_summary.json")]);

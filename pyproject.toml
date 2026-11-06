@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=80.9.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fulfilliq"
+version = "0.1.0"
+description = "Historical e-commerce delivery SLA intelligence"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "boto3==1.40.59",
+  "duckdb==1.4.2",
+  "joblib==1.5.2",
+  "pandas==2.3.3",
+  "pydantic==2.12.3",
+  "scikit-learn==1.7.2",
+]
+
+[project.scripts]
+fulfilliq = "fulfilliq.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+files = ["src/fulfilliq"]
+ignore_missing_imports = true

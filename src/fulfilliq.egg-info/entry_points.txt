@@ -1,0 +1,2 @@
+[console_scripts]
+fulfilliq = fulfilliq.cli:main

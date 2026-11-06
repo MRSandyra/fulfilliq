@@ -1,0 +1,5 @@
+Total Orders = SUM(daily_sla[orders_placed])
+Eligible Delivered = SUM(daily_sla[eligible_delivered_orders])
+Late Delivered = SUM(daily_sla[late_delivered_orders])
+Late Delivery Rate = DIVIDE([Late Delivered], [Eligible Delivered])
+GMV (BRL) = SUM(daily_sla[gmv_brl])

@@ -1,0 +1,13 @@
+Metadata-Version: 2.4
+Name: fulfilliq
+Version: 0.1.0
+Summary: Historical e-commerce delivery SLA intelligence
+Requires-Python: <3.13,>=3.12
+License-File: LICENSE
+Requires-Dist: boto3==1.40.59
+Requires-Dist: duckdb==1.4.2
+Requires-Dist: joblib==1.5.2
+Requires-Dist: pandas==2.3.3
+Requires-Dist: pydantic==2.12.3
+Requires-Dist: scikit-learn==1.7.2
+Dynamic: license-file

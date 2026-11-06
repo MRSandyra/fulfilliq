@@ -1,0 +1,3 @@
+# Model card
+
+The local model is a leakage-aware checkout-time baseline. Inputs are purchase calendar features, promised lead time, location/seller grouping, item/seller counts, price/freight totals, and initial product category. Post-checkout dates/status, reviews, carrier handoff, approval timestamp, future aggregates, and target encoding are excluded. Training runs use chronological date boundaries; threshold selection uses validation only. Populate measured metrics, class balance, calibration, model checksum, and subgroup results only after `fulfilliq train` runs successfully on the supplied data.

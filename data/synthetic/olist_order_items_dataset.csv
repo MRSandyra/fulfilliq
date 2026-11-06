@@ -1,0 +1,9 @@
+order_id,order_item_id,product_id,seller_id,shipping_limit_date,price,freight_value
+fixture-order-a,1,product-a,seller-a,2018-03-05 00:00:00,10,3
+fixture-order-b,1,product-b,seller-b,2018-03-05 00:00:00,20,5
+fixture-order-e,1,product-e,seller-a,2018-04-05 00:00:00,10,3
+fixture-order-e,2,product-f,seller-b,2018-04-05 00:00:00,20,5
+fixture-order-f,1,product-f,seller-a,2018-05-05 00:00:00,40,8
+fixture-order-g,1,product-g,seller-a,2018-05-05 00:00:00,50,8
+fixture-order-h,1,product-h,seller-a,2018-05-05 00:00:00,60,8
+fixture-order-i,1,product-i,seller-a,2018-05-05 00:00:00,70,8

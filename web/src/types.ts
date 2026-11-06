@@ -1,0 +1,4 @@
+export type Manifest = { schema_version:number; dataset_mode:"synthetic"|"local"; source_name:string; source_url:string; source_period:string; generated_at_utc:string; source_system:string; model_version:string|null; files:string[] };
+export type Overview = { total_orders:number; eligible_delivered_orders:number; late_delivered_orders:number; late_delivery_rate:number|null; gmv_brl:number; undelivered_orders:number };
+export type Group = { customer_state?:string; product_category_primary?:string; purchase_date?:string; orders_placed:number; eligible_delivered_orders:number; late_delivered_orders:number; late_delivery_rate:number|null; gmv_brl?:number };
+export type Quality = { label_coverage:number|null; quarantined_batches:number; duplicate_batches:number; orphan_outcomes:number; definition:string };
