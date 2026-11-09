@@ -34,7 +34,7 @@ The source is the Brazilian E-Commerce Public Dataset by Olist (2016–2018). Th
 
 ## Evidence on Hand
 
-The owner supplied the official Olist CSV tables under `data/source/`. Their license is CC BY-NC-SA 4.0. Measured local model evidence and redacted Athena reconciliation evidence exist; Power BI authoring remains optional and manual.
+The owner supplied the official Olist CSV tables under `data/source/`. Their license is CC BY-NC-SA 4.0. Measured local model evidence and redacted Athena reconciliation evidence exist.
 
 ## Product Principles
 

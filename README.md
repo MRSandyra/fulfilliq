@@ -42,7 +42,7 @@ FulfillIQ addresses that by:
 ## Architecture
 
 ```text
-Local Olist CSVs (ignored by Git)
+Local Olist CSVs
   │
   ├─ validate source tables and foreign-key relationships
   ├─ aggregate order items to one order
@@ -227,7 +227,7 @@ docs/                Architecture, decisions, evidence, model card, and operatio
 - The completed-delivery model is subject to selection bias and does not predict canceled or lost orders.
 - S3/Lambda processing is retry-safe and idempotent at the curated-object level, but this is not a claim of globally exactly-once event delivery.
 - Raw CSVs, credentials, Terraform state, model binaries, and order-level exports are excluded from Git and the browser.
-- Power BI authoring is optional/manual; the implemented dashboard is the React static application in `web/`.
+- The implemented dashboard is the React static application in `web/`.
 
 ## Documentation and evidence
 
