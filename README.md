@@ -27,6 +27,8 @@ The approved AWS replay completed in `ap-southeast-2` through `fulfilliq-workgro
 
 The full run passed S3-to-Lambda processing, Athena DDL and SQL checks, duplicate retry probes, scoped-prefix isolation, and a final Terraform no-drift plan. The exact Athena query IDs and scan bytes are in [cloud query evidence](docs/evidence/cloud-queries.md).
 
+**Recommendation:** Use the verified 6.7% late-delivery rate as the operating baseline, then segment late orders by customer region to identify where delays are concentrated and prioritize the highest-volume, highest-rate segments for investigation.
+
 ## Why this project exists
 
 Operations teams need a trustworthy view of whether orders met the customer promise, what checkout-time factors correlate with risk, and which data quality conditions limit conclusions. A dashboard alone is not enough: delivery analytics needs a defensible denominator, replay-safe ingestion, explicit data lineage, and evidence that the cloud path agrees with local calculations.
