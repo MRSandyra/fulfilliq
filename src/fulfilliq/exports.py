@@ -10,6 +10,49 @@ import duckdb
 
 from .config import ensure_dir
 
+# This is an allowlist, not a best-effort redaction pass.  A dashboard export is
+# a public boundary: adding a new analytics JSON file must be reviewed before it
+# can be served by Vite.
+DASHBOARD_PUBLIC_FILES = frozenset(
+    {
+        "manifest.json",
+        "overview.json",
+        "sla_daily.json",
+        "sla_regions.json",
+        "sla_categories.json",
+        "quality.json",
+        "risk_summary.json",
+    }
+)
+FORBIDDEN_DASHBOARD_FIELDS = frozenset(
+    {
+        "order_id",
+        "customer_id",
+        "customer_unique_id",
+        "seller_id",
+        "product_id",
+        "email",
+        "phone",
+        "address",
+        "zip_code",
+        "postal_code",
+        "raw_score",
+        "delivered_date",
+    }
+)
+PII_FIELD_TOKENS = frozenset(
+    {
+        "email",
+        "phone",
+        "address",
+        "street",
+        "postal",
+        "zip",
+        "latitude",
+        "longitude",
+    }
+)
+
 LOCAL_SQL = """
 CREATE OR REPLACE VIEW placed AS
 SELECT * EXCLUDE (rn) FROM (
@@ -103,11 +146,7 @@ def export_local(input_dir: Path, output_dir: Path, *, mode: str = "local") -> d
         else None,
         "quarantined_batches": ingest.get("quarantined", 0),
         "duplicate_batches": ingest.get("duplicates", 0),
-        "orphan_outcomes": int(
-            con.execute(
-                "SELECT count(*) FROM outcomes o LEFT JOIN placed p USING(order_id) WHERE p.order_id IS NULL"
-            ).fetchone()[0]
-        ),
+        "orphan_outcomes": _orphan_outcomes(con),
         "definition": "Late means delivered calendar date is after promised calendar date.",
     }
     risk = {
@@ -142,10 +181,61 @@ def export_local(input_dir: Path, output_dir: Path, *, mode: str = "local") -> d
     return manifest
 
 
+def _orphan_outcomes(con: duckdb.DuckDBPyConnection) -> int:
+    row = con.execute(
+        "SELECT count(*) FROM outcomes o LEFT JOIN placed p USING(order_id) WHERE p.order_id IS NULL"
+    ).fetchone()
+    if row is None:
+        raise RuntimeError("orphan outcome query returned no row")
+    return int(row[0])
+
+
 def copy_dashboard_data(input_dir: Path, output_dir: Path, *, mode: str) -> None:
+    """Publish only reviewed aggregate artifacts to the browser directory.
+
+    The source directory can contain local-only analysis files.  Unknown JSON
+    files and identifier-like fields are rejected rather than silently copied.
+    """
     ensure_dir(output_dir)
-    for path in input_dir.glob("*.json"):
-        (output_dir / path.name).write_bytes(path.read_bytes())
+    paths = {path.name: path for path in input_dir.glob("*.json")}
+    required = DASHBOARD_PUBLIC_FILES
+    missing = required - paths.keys()
+    if missing:
+        raise ValueError(f"dashboard export is missing required files: {sorted(missing)}")
+    unknown = paths.keys() - DASHBOARD_PUBLIC_FILES
+    if unknown:
+        raise ValueError(f"dashboard export contains unreviewed JSON files: {sorted(unknown)}")
+    stale = {path.name for path in output_dir.glob("*.json")} - DASHBOARD_PUBLIC_FILES
+    if stale:
+        raise ValueError(f"dashboard output contains stale unreviewed JSON files: {sorted(stale)}")
+    for name, path in paths.items():
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        _assert_dashboard_safe(payload, source=name)
+        (output_dir / name).write_bytes(path.read_bytes())
     manifest = json.loads((output_dir / "manifest.json").read_text())
     manifest["dataset_mode"] = mode
     _write_json(output_dir / "manifest.json", manifest)
+
+
+def _assert_dashboard_safe(value: object, *, source: str, path: str = "$") -> None:
+    """Reject fields that can identify people, orders, or individual outcomes."""
+    if isinstance(value, dict):
+        for key, child in value.items():
+            normalized = key.lower().replace("-", "_")
+            if _is_forbidden_dashboard_field(normalized):
+                raise ValueError(f"dashboard privacy boundary rejected {source}:{path}.{key}")
+            _assert_dashboard_safe(child, source=source, path=f"{path}.{key}")
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            _assert_dashboard_safe(child, source=source, path=f"{path}[{index}]")
+
+
+def _is_forbidden_dashboard_field(field: str) -> bool:
+    tokens = set(field.split("_"))
+    return (
+        field in FORBIDDEN_DASHBOARD_FIELDS
+        or field == "id"
+        or field.endswith("_id")
+        or (field.endswith("_name") and field != "source_name")
+        or bool(tokens & PII_FIELD_TOKENS)
+    )

@@ -138,11 +138,29 @@ npm run dev
 
 ## Local quick start with synthetic data
 
-Prerequisites: Python 3.12 and Node.js 20+.
+This is the supported clean-machine path. It uses only the checked-in synthetic
+fixtures and local Python/Node dependencies; it does **not** need an AWS
+account, AWS CLI, Terraform credentials, Olist downloads, or a cloud bill.
+
+Prerequisites: Python **3.12** (the project intentionally rejects 3.13+),
+Node.js **20+**, npm, and internet access once to download Python/npm packages.
+The first install is the expensive local step: `requirements-dev.txt` includes
+scientific Python wheels and can consume roughly 1 GB of virtual-environment and
+package-cache space. Python dependencies include LightGBM for the optional ML
+workflow; the synthetic quickstart itself does not train a model.
+
+Create and activate an isolated virtual environment before installing anything:
+
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+```
 
 ```powershell
 python -m pip install -r requirements-dev.txt
-cd web; npm install; cd ..
+python -m pip install -e .
+cd web; npm ci; cd ..
 
 python scripts/generate_synthetic_fixtures.py --output data/synthetic
 python -m fulfilliq.cli prepare --source data/synthetic --output data/prepared/synthetic
@@ -187,6 +205,34 @@ The three full KPI queries scanned 116,627,908 bytes in total; no individual que
 
 For a future replay or cleanup, follow the scoped [staged rollout runbook](docs/runbooks/staged-olist-rollout.md) and [teardown runbook](docs/runbooks/teardown.md). Do not broadly delete a bucket, workgroup, smoke evidence, or Athena results.
 
+Terraform itself requires Terraform 1.6+, an explicitly approved AWS account,
+and a **separate private state bucket** before `init`; copy
+`infra/terraform/backend.hcl.example` outside Git and use one remote state key
+and one data bucket per environment. Static validation (`init -backend=false`)
+does not need AWS credentials and is what local CI runs.
+
+### Credentialed evidence command
+
+The command below executes one read-only Athena KPI query and compares it to a
+local `overview.json` from the **same isolated run**. It writes a machine-readable
+pass/fail record with the Athena execution ID; no console comparison is required.
+It is blocked unless `ALLOW_CLOUD_DEPLOY=true`, `FULFILLIQ_BUCKET`, region, and
+valid AWS credentials are explicitly provided.
+
+```powershell
+$env:ALLOW_CLOUD_DEPLOY = "true" # only after owner approval
+$env:FULFILLIQ_BUCKET = "<approved-project-bucket>"
+$env:AWS_REGION = "ap-southeast-2"
+python -m fulfilliq.cli reconcile-cloud `
+  --local data/exports/olist `
+  --view fulfilliq.v_order_delivery `
+  --evidence artifacts/reports/cloud-reconciliation.json
+```
+
+`MATCH` exits 0; any metric mismatch exits non-zero and leaves the original
+frozen reconciliation figures untouched. The CI cloud tier uses the same contract
+only when a repository OIDC role and bucket secret have been configured.
+
 ## Validation and developer checks
 
 Run the Python checks:
@@ -194,6 +240,7 @@ Run the Python checks:
 ```powershell
 python -m pytest tests/unit tests/contract tests/integration tests/ml
 python -m ruff check src tests lambda
+python -m mypy src/fulfilliq
 ```
 
 Run the frontend checks:
@@ -206,6 +253,11 @@ npm run build
 ```
 
 The project also includes a CI configuration, Terraform static validation, deployment/recovery evidence, and detailed implementation log. CI workflow execution in a remote Git host is not claimed by this repository unless independently recorded.
+
+CI is intentionally tiered: `lint-and-typecheck`, `unit`, and
+`local-contract` always run without cloud credentials. `cloud-reconciliation`
+is skipped unless the repository has `AWS_ROLE_TO_ASSUME` configured; it uses
+GitHub OIDC and a read-only KPI query, never a static access key or deployment.
 
 ## Repository map
 
@@ -230,6 +282,8 @@ docs/                Architecture, decisions, evidence, model card, and operatio
 - S3/Lambda processing is retry-safe and idempotent at the curated-object level, but this is not a claim of globally exactly-once event delivery.
 - Raw CSVs, credentials, Terraform state, model binaries, and order-level exports are excluded from Git and the browser.
 - The implemented dashboard is the React static application in `web/`.
+
+See the explicit [dashboard privacy boundary](docs/security.md#dashboard-privacy-boundary), [cost controls](docs/costs.md), and [teardown runbook](docs/runbooks/teardown.md) before any credentialed operation.
 
 ## Documentation and evidence
 

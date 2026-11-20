@@ -1,10 +1,23 @@
 name: CI
+
 on:
-  push: { branches: [main] }
-  pull_request: { branches: [main] }
-permissions: { contents: read }
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# GitHub does not allow secrets directly in job `if` expressions. Empty values
+# on forks/unenrolled repositories cause the cloud job to be skipped.
+env:
+  CLOUD_ROLE_ARN: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+  CLOUD_BUCKET: ${{ secrets.FULFILLIQ_BUCKET }}
+
 jobs:
-  verify:
+  lint-and-typecheck:
+    name: Lint and type-check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -13,9 +26,36 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "20" }
       - run: python -m pip install -r requirements-dev.txt
-      - run: python -m ruff check src tests
-      - run: python -m ruff format --check src tests
-      - run: python -m pytest tests/unit tests/contract tests/integration tests/ml --cov=src/fulfilliq --cov-report=term-missing
+      - run: python -m pip install -e .
+      - run: python -m ruff check src tests lambda scripts
+      - run: python -m ruff format --check src tests lambda scripts
+      - run: python -m mypy src/fulfilliq
+      - working-directory: web
+        run: npm ci && npm run lint && npx tsc -b --pretty false
+
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m pip install -e .
+      - run: python -m pytest tests/unit tests/ml --cov=src/fulfilliq --cov-report=term-missing
+
+  local-contract:
+    name: Local contract and quickstart
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "20" }
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m pip install -e .
+      - run: python -m pytest tests/contract tests/integration
       - run: python scripts/generate_synthetic_fixtures.py --output data/synthetic
       - run: python -m fulfilliq.cli prepare --source data/synthetic --output data/prepared/synthetic
       - run: python -m fulfilliq.cli replay --input data/prepared/synthetic --output data/batches/synthetic
@@ -23,8 +63,35 @@ jobs:
       - run: python -m fulfilliq.cli local-query --input data/local-curated/synthetic --output data/exports/synthetic --mode synthetic
       - run: python -m fulfilliq.cli build-dashboard-data --input data/exports/synthetic --output web/public/data --mode synthetic
       - working-directory: web
-        run: npm ci && npm run lint && npm run test && npm run build
+        run: npm ci && npm run test && npm run build
       - uses: hashicorp/setup-terraform@v3
       - run: terraform -chdir=infra/terraform fmt -check -recursive
       - run: terraform -chdir=infra/terraform init -backend=false
       - run: terraform -chdir=infra/terraform validate
+
+  cloud-reconciliation:
+    name: Cloud reconciliation (credentialed)
+    # No AWS calls are made unless this repository has an explicitly configured
+    # OIDC role. Secrets are unavailable to untrusted pull requests, so this is
+    # also naturally skipped for forks.
+    if: ${{ env.CLOUD_ROLE_ARN != '' && env.CLOUD_BUCKET != '' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      ALLOW_CLOUD_DEPLOY: "true"
+      AWS_REGION: ap-southeast-2
+      FULFILLIQ_BUCKET: ${{ env.CLOUD_BUCKET }}
+      CLOUD_TESTS: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.CLOUD_ROLE_ARN }}
+          aws-region: ap-southeast-2
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m pip install -e .
+      - run: python -m pytest tests/cloud

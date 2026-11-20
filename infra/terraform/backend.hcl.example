@@ -1,0 +1,8 @@
+# Copy outside Git as backend.<environment>.hcl. This bucket is a separately
+# administered state bucket, not the FulfillIQ data bucket being created here.
+# Enable versioning, encryption, least-privilege access, and a lockfile there.
+bucket       = "replace-with-private-terraform-state-bucket"
+key          = "fulfilliq/dev/terraform.tfstate"
+region       = "ap-southeast-2"
+encrypt      = true
+use_lockfile = true

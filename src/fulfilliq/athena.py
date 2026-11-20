@@ -3,11 +3,12 @@ from __future__ import annotations
 import os
 import time
 from pathlib import Path
+from typing import Any
 
 import boto3
 
 
-def require_approved_cloud() -> tuple[object, str, str]:
+def require_approved_cloud() -> tuple[Any, str, str]:
     if os.getenv("ALLOW_CLOUD_DEPLOY") != "true":
         raise PermissionError(
             "cloud action blocked; owner approval flag ALLOW_CLOUD_DEPLOY=true is required"

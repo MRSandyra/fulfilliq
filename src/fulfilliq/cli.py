@@ -4,7 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
-from . import athena, aws_pipeline, datasets, exports, local_pipeline, replay
+from . import athena, aws_pipeline, datasets, exports, local_pipeline, reconciliation, replay
 from .ml.score import score_aggregate
 from .ml.train import train_from_facts
 
@@ -64,6 +64,13 @@ def build_parser() -> argparse.ArgumentParser:
     p = command("compare-warehouse")
     p.add_argument("--local", type=path, required=True)
     p.add_argument("--cloud", type=path, required=True)
+    p = command("reconcile-cloud")
+    p.add_argument("--local", type=path, required=True, help="directory containing overview.json")
+    p.add_argument("--view", default="fulfilliq.v_order_delivery")
+    p.add_argument("--workgroup", default="fulfilliq-workgroup")
+    p.add_argument(
+        "--evidence", type=path, help="optional JSON result path (safe aggregate metrics only)"
+    )
     p = command("export-athena")
     p.add_argument("--output", type=path, required=True)
     p.add_argument("--limit-queries", type=int, default=10)
@@ -117,6 +124,16 @@ def main(argv: list[str] | None = None) -> None:
             if local.get(key) != cloud.get(key)
         }
         _print({"matches": not differences, "differences": differences})
+    elif args.command == "reconcile-cloud":
+        result = reconciliation.reconcile_cloud(
+            args.local, view=args.view, workgroup=args.workgroup
+        )
+        if args.evidence:
+            args.evidence.parent.mkdir(parents=True, exist_ok=True)
+            args.evidence.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+        _print(result)
+        if result["status"] != "MATCH":
+            raise SystemExit(1)
     elif args.command == "export-athena":
         if args.limit_queries < 3:
             raise ValueError("export-athena requires at least three bounded read queries")

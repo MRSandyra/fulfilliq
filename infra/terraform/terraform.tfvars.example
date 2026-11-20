@@ -1,2 +1,3 @@
 # Select a globally unique name only after the owner approves cloud provisioning.
-bucket_name = "fulfilliq-example-replace-after-approval"
+environment = "dev"
+bucket_name = "fulfilliq-dev-example-replace-after-approval"

@@ -5,8 +5,6 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from .config import SCHEMA_VERSION
-
 
 class ContractError(ValueError):
     """A batch/event contract failed validation."""
@@ -15,7 +13,7 @@ class ContractError(ValueError):
 class BaseEvent(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
-    schema_version: Literal[SCHEMA_VERSION]
+    schema_version: Literal[1]
     event_type: str
     order_id: str = Field(min_length=1, max_length=128)
     event_ts: datetime

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import shutil
 from pathlib import Path
+from typing import Any
 
 from .config import ensure_dir
 from .transform import ContractError, event_type, normalized_jsonl, validate_batch
@@ -12,7 +13,13 @@ def ingest_batches(input_dir: Path, output_dir: Path) -> dict:
     """Local equivalent of Lambda: immutable curated objects or whole-batch quarantine."""
     curated = ensure_dir(output_dir / "curated")
     quarantine = ensure_dir(output_dir / "quarantine")
-    report = {"processed": 0, "curated": 0, "quarantined": 0, "duplicates": 0, "errors": []}
+    report: dict[str, Any] = {
+        "processed": 0,
+        "curated": 0,
+        "quarantined": 0,
+        "duplicates": 0,
+        "errors": [],
+    }
     for batch_path in sorted(input_dir.glob("*/*.jsonl")):
         report["processed"] += 1
         batch_id = batch_path.stem

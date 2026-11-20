@@ -1,7 +1,7 @@
 locals {
   tags = {
     Project     = "FulfillIQ"
-    Environment = "dev"
+    Environment = var.environment
     Owner       = "portfolio"
     Purpose     = "learning"
     ExpiryHint  = var.expiry_hint
@@ -25,6 +25,23 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "pipeline" {
   }
 }
 
+resource "aws_s3_bucket_ownership_controls" "pipeline" {
+  bucket = aws_s3_bucket.pipeline.id
+  rule { object_ownership = "BucketOwnerEnforced" }
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "pipeline" {
+  bucket = aws_s3_bucket.pipeline.id
+
+  rule {
+    id     = "expire-athena-results"
+    status = "Enabled"
+    filter { prefix = "athena-results/" }
+    expiration { days = 7 }
+    abort_incomplete_multipart_upload { days_after_initiation = 1 }
+  }
+}
+
 resource "aws_s3_bucket_policy" "tls" {
   bucket = aws_s3_bucket.pipeline.id
   policy = jsonencode({
@@ -41,14 +58,14 @@ resource "aws_s3_bucket_policy" "tls" {
 }
 
 resource "aws_lambda_function" "transform" {
-  function_name                  = "${var.project_id}-transform"
-  role                           = aws_iam_role.lambda.arn
-  runtime                        = "python3.12"
-  handler                        = "handler.handler"
-  filename                       = var.lambda_zip_path
-  source_code_hash               = filebase64sha256(var.lambda_zip_path)
-  memory_size                    = 256
-  timeout                        = 30
+  function_name    = "${var.project_id}-transform"
+  role             = aws_iam_role.lambda.arn
+  runtime          = "python3.12"
+  handler          = "handler.handler"
+  filename         = var.lambda_zip_path
+  source_code_hash = filebase64sha256(var.lambda_zip_path)
+  memory_size      = 256
+  timeout          = 30
   # This account enforces a minimum unreserved concurrency of 10. A reservation
   # of 2 is therefore not permitted; no reservation is safer than a rejected deploy.
   environment {
@@ -65,11 +82,12 @@ resource "aws_cloudwatch_log_group" "lambda" {
 }
 
 resource "aws_lambda_permission" "s3" {
-  statement_id  = "AllowS3Invoke"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.transform.function_name
-  principal     = "s3.amazonaws.com"
-  source_arn    = aws_s3_bucket.pipeline.arn
+  statement_id   = "AllowS3Invoke"
+  action         = "lambda:InvokeFunction"
+  function_name  = aws_lambda_function.transform.function_name
+  principal      = "s3.amazonaws.com"
+  source_arn     = aws_s3_bucket.pipeline.arn
+  source_account = data.aws_caller_identity.current.account_id
 }
 
 resource "aws_s3_bucket_notification" "raw" {

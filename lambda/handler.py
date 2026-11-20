@@ -1,4 +1,5 @@
 """AWS Lambda adapter; core validation remains in `fulfilliq.transform`."""
+
 from __future__ import annotations
 
 import json
@@ -95,13 +96,25 @@ def handler(event: dict, context, *, s3_client=None) -> dict:
                 body=normalized_jsonl(events),
                 content_type="application/x-ndjson",
             )
-            payload = {"status": "duplicate" if duplicate else "curated", "batch_id": batch_id, "event_type": kind, "count": len(events), "elapsed_ms": round((perf_counter() - started) * 1000, 2)}
+            payload = {
+                "status": "duplicate" if duplicate else "curated",
+                "batch_id": batch_id,
+                "event_type": kind,
+                "count": len(events),
+                "elapsed_ms": round((perf_counter() - started) * 1000, 2),
+            }
             LOG.info(json.dumps(payload))
             results.append(payload)
         except (UnicodeDecodeError, ContractError, OSError, ValueError) as exc:
             quarantine_key = f"{quarantine_prefix}/{batch_id}.json"
             report = {"status": "quarantined", "batch_id": batch_id, "error": str(exc)[:500]}
-            client.put_object(Bucket=bucket, Key=quarantine_key, Body=json.dumps(report).encode("utf-8"), ServerSideEncryption="AES256", ContentType="application/json")
+            client.put_object(
+                Bucket=bucket,
+                Key=quarantine_key,
+                Body=json.dumps(report).encode("utf-8"),
+                ServerSideEncryption="AES256",
+                ContentType="application/json",
+            )
             LOG.error(json.dumps(report))
             results.append(report)
     return {"records": results}

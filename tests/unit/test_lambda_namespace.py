@@ -54,3 +54,39 @@ def test_namespaced_olist_event_is_written_outside_the_smoke_prefix():
     duplicate = load_handler()(invoke_event, None, s3_client=s3)
     assert duplicate["records"][0]["status"] == "duplicate"
     assert s3.puts == ["curated/olist/olist-2018-08-31-100/order_placed/batch.jsonl"]
+
+
+def test_multi_record_delivery_quarantines_bad_batch_and_keeps_duplicate_idempotent():
+    good = {
+        "schema_version": 1,
+        "event_type": "order_placed",
+        "order_id": "batch-good",
+        "event_ts": "2018-03-01T09:00:00",
+        "promised_delivery_date": "2018-03-10",
+        "customer_state": "SP",
+        "seller_state": "RJ",
+        "items_count": 1,
+        "seller_count": 1,
+        "order_value_brl": 10,
+        "freight_brl": 2,
+        "product_category_primary": "housewares",
+    }
+    good_key = "raw/order_placed/good.jsonl"
+    bad_key = "raw/order_placed/bad.jsonl"
+    s3 = FakeS3({good_key: (json.dumps(good) + "\n").encode(), bad_key: b"{broken\n"})
+    event = {
+        "Records": [
+            {"s3": {"bucket": {"name": "bucket"}, "object": {"key": good_key}}},
+            {"s3": {"bucket": {"name": "bucket"}, "object": {"key": bad_key}}},
+        ]
+    }
+
+    first = load_handler()(event, None, s3_client=s3)
+    retry = load_handler()(
+        {"Records": [event["Records"][0], event["Records"][0]]}, None, s3_client=s3
+    )
+
+    assert [row["status"] for row in first["records"]] == ["curated", "quarantined"]
+    assert [row["status"] for row in retry["records"]] == ["duplicate", "duplicate"]
+    assert s3.puts.count("curated/order_placed/good.jsonl") == 1
+    assert "quarantine/bad.json" in s3.objects

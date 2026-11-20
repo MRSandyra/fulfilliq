@@ -3,6 +3,7 @@ duckdb==1.4.2
 joblib==1.5.2
 lightgbm==4.6.0
 matplotlib==3.10.7
+mypy==1.18.2
 moto[s3]==5.1.16
 pandas==2.3.3
 pyarrow==21.0.0

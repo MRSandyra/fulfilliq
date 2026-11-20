@@ -15,21 +15,29 @@ resource "aws_iam_role" "lambda" {
 
 data "aws_iam_policy_document" "lambda" {
   statement {
-    actions   = ["s3:GetObject"]
-    resources = ["${aws_s3_bucket.pipeline.arn}/raw/*"]
+    actions = ["s3:GetObject"]
+    resources = [
+      "${aws_s3_bucket.pipeline.arn}/raw/order_placed/*.jsonl",
+      "${aws_s3_bucket.pipeline.arn}/raw/delivery_outcome/*.jsonl",
+      "${aws_s3_bucket.pipeline.arn}/raw/olist/*/order_placed/*.jsonl",
+      "${aws_s3_bucket.pipeline.arn}/raw/olist/*/delivery_outcome/*.jsonl",
+    ]
   }
   statement {
-    actions   = ["s3:GetObject", "s3:PutObject"]
-    resources = ["${aws_s3_bucket.pipeline.arn}/curated/*", "${aws_s3_bucket.pipeline.arn}/quarantine/*"]
+    actions = ["s3:GetObject", "s3:PutObject"]
+    resources = [
+      "${aws_s3_bucket.pipeline.arn}/curated/order_placed/*.jsonl",
+      "${aws_s3_bucket.pipeline.arn}/curated/delivery_outcome/*.jsonl",
+      "${aws_s3_bucket.pipeline.arn}/curated/olist/*/order_placed/*.jsonl",
+      "${aws_s3_bucket.pipeline.arn}/curated/olist/*/delivery_outcome/*.jsonl",
+    ]
   }
   statement {
-    actions   = ["s3:ListBucket"]
-    resources = [aws_s3_bucket.pipeline.arn]
-    condition {
-      test     = "StringLike"
-      variable = "s3:prefix"
-      values   = ["curated/*"]
-    }
+    actions = ["s3:PutObject"]
+    resources = [
+      "${aws_s3_bucket.pipeline.arn}/quarantine/*.json",
+      "${aws_s3_bucket.pipeline.arn}/quarantine/olist/*/*.json",
+    ]
   }
   statement {
     actions   = ["logs:CreateLogStream", "logs:PutLogEvents"]

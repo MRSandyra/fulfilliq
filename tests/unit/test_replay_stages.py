@@ -42,8 +42,16 @@ def write_events(path, kind: str, events: list[dict]) -> None:
 def test_staged_replay_selects_a_nested_order_prefix_and_matching_outcomes(tmp_path):
     source = tmp_path / "prepared"
     source.mkdir()
-    write_events(source, "order_placed", [placed("b", "2018-03-02T09:00:00"), placed("a", "2018-03-01T09:00:00")])
-    write_events(source, "delivery_outcome", [outcome("b", "2018-03-04T09:00:00"), outcome("a", "2018-03-03T09:00:00")])
+    write_events(
+        source,
+        "order_placed",
+        [placed("b", "2018-03-02T09:00:00"), placed("a", "2018-03-01T09:00:00")],
+    )
+    write_events(
+        source,
+        "delivery_outcome",
+        [outcome("b", "2018-03-04T09:00:00"), outcome("a", "2018-03-03T09:00:00")],
+    )
 
     output = tmp_path / "stage-1"
     create_batches(source, output, order_limit=1, max_records=100)
